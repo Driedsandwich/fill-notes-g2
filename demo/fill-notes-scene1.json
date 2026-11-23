@@ -1,0 +1,20 @@
+{
+  "_note": "Times are seconds from the start of capture. run-scene.sh starts capture about 1.5 s before the first fill question appears (serverLeadSec). No long_press here (it opens the Mac microphone).",
+  "automationPort": 9898,
+  "fps": 6,
+  "scale": 2,
+  "serverLeadSec": 1.5,
+  "steps": [
+    { "at": 0.0, "action": "wait" },
+    { "at": 4.5, "action": "down" },
+    { "at": 6.0, "action": "click" },
+    { "at": 20.0, "action": "end" }
+  ],
+  "marks": [
+    { "at": 0.5, "name": "waiting_before" },
+    { "at": 3.5, "name": "prompt" },
+    { "at": 5.5, "name": "prompt_after_down" },
+    { "at": 8.0, "name": "saved" },
+    { "at": 16.0, "name": "waiting_after" }
+  ]
+}
