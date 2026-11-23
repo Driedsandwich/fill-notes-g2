@@ -32,3 +32,32 @@ describe('openAICompatibleTranscriber', () => {
     expect(auth).toBe('Bearer test-key')
   })
 })
+
+import { localCommandTranscriber, localHttpTranscriber } from '../src/stt.ts'
+
+describe('stt: local command', () => {
+  it('passes a WAV file to the command and returns its stdout', async () => {
+    // `node -e` prints the size of the file it was given: 44-byte header + 3200 bytes of PCM
+    const t = localCommandTranscriber({ command: process.execPath, args: ['-e', 'console.log("bytes", require("fs").statSync(process.argv.at(-1)).size)'] })
+    expect(await t!(new Uint8Array(3200))).toBe('bytes 3244')
+  })
+
+  it('reports a failing command as an error', async () => {
+    const t = localCommandTranscriber({ command: process.execPath, args: ['-e', 'process.exit(3)'] })
+    await expect(t!(new Uint8Array(10))).rejects.toThrow(/STT command failed/)
+  })
+})
+
+describe('stt: local http server', () => {
+  it('posts a WAV body to /transcribe and returns the text', async () => {
+    let seen: { url: string; len: number; type: string } | null = null
+    const fetchImpl = async (url: string, init?: RequestInit) => {
+      const body = init!.body as Buffer
+      seen = { url, len: body.length, type: String((init!.headers as Record<string, string>)['content-type']) }
+      return new Response(JSON.stringify({ text: ' took profit at resistance ' }), { status: 200 })
+    }
+    const t = localHttpTranscriber({ baseUrl: 'http://127.0.0.1:8796/', fetchImpl })
+    expect(await t!(new Uint8Array(3200))).toBe('took profit at resistance')
+    expect(seen).toEqual({ url: 'http://127.0.0.1:8796/transcribe', len: 3244, type: 'audio/wav' })
+  })
+})

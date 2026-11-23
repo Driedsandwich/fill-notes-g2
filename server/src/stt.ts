@@ -1,3 +1,7 @@
+import { execFile } from 'node:child_process'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import type { FetchLike, Transcriber } from './types.ts'
 
 /** Wrap raw PCM (16 kHz, 16-bit little-endian, mono) in a WAV container. */
@@ -37,6 +41,56 @@ export function openAICompatibleTranscriber(opts: SttOptions): Transcriber {
       method: 'POST',
       headers: { authorization: `Bearer ${opts.apiKey}` },
       body: form,
+    })
+    if (!res.ok) throw new Error(`STT HTTP ${res.status}`)
+    const json = (await res.json()) as { text?: string }
+    return (json.text ?? '').trim()
+  }
+}
+
+export interface LocalCommandOptions {
+  /** Program to run, e.g. `python3`. */
+  command: string
+  /** Extra arguments; the WAV path is appended last. */
+  args?: string[]
+  timeoutMs?: number
+}
+
+/**
+ * Speech-to-text on this machine: writes the clip to a temp WAV, runs `command ...args <wav>`
+ * and takes stdout as the text. Audio never leaves the computer running the server.
+ */
+export function localCommandTranscriber(opts: LocalCommandOptions): Transcriber {
+  return async (pcm) => {
+    const dir = await mkdtemp(join(tmpdir(), 'fillnotes-stt-'))
+    const wav = join(dir, 'voice.wav')
+    try {
+      await writeFile(wav, pcmToWav(pcm))
+      const out = await new Promise<string>((resolve, reject) => {
+        execFile(opts.command, [...(opts.args ?? []), wav], { timeout: opts.timeoutMs ?? 60000, maxBuffer: 1 << 20 }, (err, stdout) =>
+          err ? reject(new Error(`STT command failed: ${err.message}`)) : resolve(String(stdout)),
+        )
+      })
+      return out.trim()
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  }
+}
+
+export interface LocalHttpOptions {
+  baseUrl: string
+  fetchImpl?: FetchLike
+}
+
+/** Speech-to-text through the local server in scripts/stt_server.py (keeps the model warm; 127.0.0.1 only). */
+export function localHttpTranscriber(opts: LocalHttpOptions): Transcriber {
+  const doFetch: FetchLike = opts.fetchImpl ?? ((u, i) => fetch(u, i))
+  return async (pcm) => {
+    const res = await doFetch(`${opts.baseUrl.replace(/\/+$/, '')}/transcribe`, {
+      method: 'POST',
+      headers: { 'content-type': 'audio/wav' },
+      body: Buffer.from(pcmToWav(pcm)),
     })
     if (!res.ok) throw new Error(`STT HTTP ${res.status}`)
     const json = (await res.json()) as { text?: string }

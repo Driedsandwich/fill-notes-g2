@@ -4,7 +4,7 @@ export interface Config {
   port: number
   fillSource: 'replay' | 'binance-testnet'
   reasoner: 'rules' | 'openai-compatible'
-  stt: 'none' | 'openai-compatible'
+  stt: 'none' | 'openai-compatible' | 'local-command' | 'local-http'
   journal: 'jsonl' | 'notion'
   dailyLossLimitUsd: number
   dataDir: string
@@ -33,7 +33,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     port: num('PORT', env.PORT, 8787),
     fillSource: oneOf('FILL_SOURCE', env.FILL_SOURCE, ['replay', 'binance-testnet'] as const, 'replay'),
     reasoner: oneOf('REASONER', env.REASONER, ['rules', 'openai-compatible'] as const, 'rules'),
-    stt: oneOf('STT', env.STT, ['none', 'openai-compatible'] as const, 'none'),
+    stt: oneOf('STT', env.STT, ['none', 'openai-compatible', 'local-command', 'local-http'] as const, 'none'),
     journal: oneOf('JOURNAL', env.JOURNAL, ['jsonl', 'notion'] as const, 'jsonl'),
     dailyLossLimitUsd: num('DAILY_LOSS_LIMIT_USD', env.DAILY_LOSS_LIMIT_USD, 200),
     dataDir: path.resolve(env.DATA_DIR || path.join(process.cwd(), 'data')),

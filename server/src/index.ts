@@ -9,7 +9,7 @@ import { loadOrCreatePairCode } from './pairing.ts'
 import { openAICompatibleReasoner, rulesReasoner } from './reasoner.ts'
 import { BinanceTestnetSource } from './sources/binance.ts'
 import { ReplaySource, loadFixture } from './sources/replay.ts'
-import { openAICompatibleTranscriber } from './stt.ts'
+import { localCommandTranscriber, localHttpTranscriber, openAICompatibleTranscriber } from './stt.ts'
 import type { FillSource, Journal, Reasoner, Transcriber } from './types.ts'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
@@ -60,7 +60,11 @@ async function main(): Promise<void> {
   const transcriber: Transcriber =
     cfg.stt === 'openai-compatible'
       ? openAICompatibleTranscriber({ baseUrl: required('STT_BASE_URL'), apiKey: required('STT_API_KEY'), model: process.env.STT_MODEL || 'whisper-1' })
-      : null
+      : cfg.stt === 'local-command'
+        ? localCommandTranscriber({ command: required('STT_COMMAND'), args: (process.env.STT_ARGS ?? '').split(' ').filter(Boolean) })
+        : cfg.stt === 'local-http'
+          ? localHttpTranscriber({ baseUrl: process.env.STT_BASE_URL || 'http://127.0.0.1:8796' })
+          : null
 
   const journal: Journal =
     cfg.journal === 'notion'
