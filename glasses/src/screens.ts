@@ -129,7 +129,7 @@ export function buildScreen(s: ServerState | null, ctx: Ctx): Screen {
       paddingLength: 2,
       containerID: 3,
       containerName: 'hint',
-      content: ctx.flash || `Tap = save ${DOT} Hold = voice`,
+      content: ctx.flash || `TESTNET ${DOT} Tap = save ${DOT} Hold = voice`,
       isEventCapture: 0,
     })
     // the layout id includes the list items: a list cannot be changed in place
