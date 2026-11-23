@@ -1,0 +1,21 @@
+{
+  "package_id": "com.fillnotes.app",
+  "edition": "202601",
+  "name": "Fill Notes",
+  "version": "0.1.0",
+  "min_app_version": "2.2.10",
+  "min_sdk_version": "0.0.16",
+  "entrypoint": "index.html",
+  "permissions": [
+    {
+      "name": "network",
+      "desc": "Talks to your own Fill Notes server (testnet fills, notes, voice text). Replace the example address with your server's address.",
+      "whitelist": ["http://localhost:8787"]
+    },
+    {
+      "name": "g2-microphone",
+      "desc": "Long-press to dictate a reason for a trade by voice."
+    }
+  ],
+  "supported_languages": ["en"]
+}

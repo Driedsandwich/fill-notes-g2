@@ -1,0 +1,20 @@
+{
+  "_note": "Fictional sample fills for the replay source. Not real trades. pnl is realized PnL in USD for that fill (null = opening buy).",
+  "fills": [
+    { "symbol": "ETHUSDT", "side": "BUY",  "qty": 1.0, "price": 3340.0, "pnl": null },
+    { "symbol": "ETHUSDT", "side": "SELL", "qty": 0.5, "price": 3412.0, "pnl": 36.0 },
+    { "symbol": "BTCUSDT", "side": "BUY",  "qty": 0.02, "price": 97250.5, "pnl": null },
+    { "symbol": "BTCUSDT", "side": "SELL", "qty": 0.02, "price": 96480.0, "pnl": -15.41 },
+    { "symbol": "ETHUSDT", "side": "BUY",  "qty": 2.0, "price": 3398.2, "pnl": null },
+    { "symbol": "ETHUSDT", "side": "SELL", "qty": 1.5, "price": 3301.0, "pnl": -146.1 },
+    { "symbol": "BTCUSDT", "side": "BUY",  "qty": 0.03, "price": 96100.0, "pnl": null },
+    { "symbol": "BTCUSDT", "side": "SELL", "qty": 0.03, "price": 94890.0, "pnl": -36.3 },
+    { "symbol": "ETHUSDT", "side": "SELL", "qty": 0.5, "price": 3288.4, "pnl": -54.8 },
+    { "symbol": "BTCUSDT", "side": "BUY",  "qty": 0.01, "price": 94600.0, "pnl": null }
+  ],
+  "openOrders": [
+    { "symbol": "ETHUSDT", "orderId": 900001, "side": "SELL", "qty": 0.5, "price": 3500.0 },
+    { "symbol": "BTCUSDT", "orderId": 900002, "side": "BUY", "qty": 0.01, "price": 92000.0 },
+    { "symbol": "BTCUSDT", "orderId": 900003, "side": "SELL", "qty": 0.01, "price": 99000.0 }
+  ]
+}
