@@ -155,7 +155,7 @@ export function buildScreen(s: ServerState | null, ctx: Ctx): Screen {
         1,
         'main',
         `TESTNET ${DOT} DAY LIMIT\n` +
-          `Day PnL ${money(d.pnl)} = your limit ($${d.limit})\n\n` +
+          `Day PnL ${money(d.pnl)} · limit $${d.limit} reached\n\n` +
           `Cancel all open orders?\n` +
           `Filled positions stay. Nothing is sold.\n` +
           `${CURSOR} Tap: Yes, cancel open orders\n` +
