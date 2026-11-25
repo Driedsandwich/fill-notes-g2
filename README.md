@@ -1,18 +1,30 @@
-# Fill Notes (draft)
+# Fill Notes
 
-When a fill happens on a crypto exchange **testnet**, your Even Realities G2 glasses show one line, for example `SELL 0.5 ETH @ 3,412`, and ask **Why?** with three candidate reasons.
-Tap to pick one, or long-press and speak to write your own. The note lands as one row in a Notion database (or a local JSONL file when no Notion key is set).
-If the day's realized loss reaches the limit you set, the glasses ask "Cancel all open orders?" and only a tap on the glasses cancels the open **testnet** orders.
+Ask "Why?" on your Even Realities G2 glasses the moment a crypto **testnet** trade fills, and keep the answer.
 
-TESTNET ONLY. No real money is touched. Nothing here is trading advice: the candidate reasons describe motives a trader might have had, they never say what to do.
+TESTNET ONLY. No real money is touched. Nothing here is trading advice: the reason tags describe a motive the trader chooses, they never say what to do.
 
-Status: working draft. The server and its tests run offline. The glasses app builds and packs. It has not been run in the simulator or on a device by the person who wrote this README yet (see "Not verified yet").
+## What it does
+
+Fill Notes is a G2 trade-journaling prototype that asks for a reason while a trade is still fresh.
+
+A Binance Spot testnet fill (or a synthetic fill used for demonstration) opens a short prompt on the glasses, for example `SELL 0.5 ETH @ 3,412 +$36.00` and `Why?`. Three rule-based reason tags appear. Swipe to select one and tap to save, or hold to dictate a short reason. An optional AI suggestion can add another tag; the wearer makes the choice.
+
+A five-second undo window comes before recording. The note is written to a Notion table, or to a local JSONL file when no Notion key is configured.
+
+When realized daily losses reach a limit set by the user, the app asks whether to cancel all open testnet orders. Cancellation requires a confirming tap on the glasses. Filled positions remain, and nothing is sold.
+
+## Who it is for
+
+People making short-term crypto trades who want to record their reasons right after a fill and revisit them later. The reason is clear at the moment of execution but often forgotten by a weekend review, and opening a phone to write a journal entry is one more task at that moment. Fill Notes offers a brief choice on the glasses instead.
+
+User interviews and measurements of time saved have not been conducted.
 
 ## How it works
 
 ```
  Binance Spot TESTNET            (or)  fixtures/fills.json
-  GET /api/v3/myTrades  (signed)        replay of fictional fills
+  GET /api/v3/myTrades  (signed)        synthetic fills (replay)
               \                         /
                v                       v
         +---------------------------------------+
@@ -20,7 +32,7 @@ Status: working draft. The server and its tests run offline. The glasses app bui
         |  fill source -> reasoner (3 reasons)  |
         |  engine: prompt / saved(5s undo) /    |--> data/journal.jsonl
         |          daily-loss limit / pairing   |--> Notion DB (optional)
-        |  HTTP + SSE        MCP (stdio)        |<-- LLM / STT (optional, OpenAI-compatible)
+        |  HTTP + SSE        MCP (stdio)        |<-- LLM / STT (optional)
         +-----------+---------------+-----------+
                     |               |
         phone WebView (Even app)    AI agents (Claude, etc.)
@@ -28,12 +40,24 @@ Status: working draft. The server and its tests run offline. The glasses app bui
           -> 576x288 screens on the G2     get_pending_prompt, propose_reason
 ```
 
+- Glasses app and server: the app uses the Even Hub SDK, Vite and TypeScript, runs in a WebView inside the Even Realities App, and pairs with its own server through a six-digit code.
+- Reason choices: rules pick three tags from take-profit, stop-loss, scale-in, scale-out, breakout, dip-buy and rebalance. An optional OpenAI-compatible LLM can add one tag suggestion (`AI: <tag>`). It never recommends trades.
+- Voice: speech-to-text is your own: a local Whisper server on the same machine (`server/scripts/stt_server.py`, small English model) or any OpenAI-compatible endpoint.
+- Agent tools (MCP): an agent can read notes, see weekly patterns, see the pending prompt and propose a reason. It cannot choose for the wearer.
+
 Glasses screens (green, text only, no font control):
 
 1. Waiting: `FILL NOTES · TESTNET`, notes today, day PnL, a `━━━───` bar against the loss limit.
-2. Fill question: the fill line, `Why?`, a list of candidate reasons. Swipe to move, tap to confirm, long-press to dictate.
+2. Fill question: the fill line, `Why?`, the reason list, `TESTNET · Tap = save · Hold = voice`.
 3. Saved: `Saved ● <reason>` and `Tap to undo (5s)`.
-4. Day limit: `Cancel all open orders?` Tap = yes, swipe = not now.
+4. Day limit: `Day PnL -$216.61 · limit $200 reached`, `Cancel all open orders?`, `Filled positions stay. Nothing is sold.` Tap = yes, swipe = not now.
+
+## Money and data safety
+
+- Testnet only. The server talks to `testnet.binance.vision` and nowhere else for trading data. There is no code path that places an order. The only exchange write is cancelling open testnet orders, after the daily limit is reached and the wearer confirms on the glasses. Filled positions are not closed and nothing is sold.
+- No financial advice. Reason tags describe the motive the user chooses or writes.
+- Keys stay on your own server (`.env`, git-ignored). The glasses app, the LLM and the MCP process never see them. `env.example` has names only. A multi-user version would keep each user's exchange keys on a server that user runs, not on a shared service.
+- Demonstrations use synthetic fills (`server/fixtures/fills.json`) or a testnet account only. Never commit API keys or secrets.
 
 ## Quick start
 
@@ -78,7 +102,7 @@ Real device: the phone cannot reach `localhost` of your computer. Use your compu
 | `PORT` | `8787` | HTTP port |
 | `FILL_SOURCE` | `replay` | `replay` or `binance-testnet` |
 | `REASONER` | `rules` | `rules` (offline) or `openai-compatible` (falls back to rules on any error) |
-| `STT` | `none` | `none` (voice answers 501) or `openai-compatible` |
+| `STT` | `none` | `none` (voice answers 501), `openai-compatible`, `local-http` (POSTs WAV to `STT_BASE_URL`, default `http://127.0.0.1:8796`, e.g. `server/scripts/stt_server.py`) or `local-command` (`STT_COMMAND` + `STT_ARGS`, reads the transcript from stdout) |
 | `JOURNAL` | `jsonl` | `jsonl` or `notion` (Notion also mirrors every row to the local JSONL) |
 | `DAILY_LOSS_LIMIT_USD` | `200` | day loss that triggers the limit screen (0 disables) |
 | `DATA_DIR` | `./data` | pair code and journal |
@@ -126,13 +150,6 @@ An AI can only add a suggestion (shown as `AI: <tag>` in the list). Choosing it 
 - Glyphs: `✓` is not in the G2 font, so `●` is used. The minus sign is an ASCII hyphen.
 - The SDK 0.0.16 does not export `setBackgroundState` / `onBackgroundRestore` (they appear in the guide only). `glasses/src/background.ts` implements the host contract the guide describes (`window.__getStateSnapshot` / `__restoreState`) with the same function shapes.
 
-## Money and key safety
-
-- Testnet only. The server talks to `testnet.binance.vision` and nowhere else for trading data. There is no code path that places an order. The only write to the exchange is cancelling open testnet orders, and only after a person taps "yes" on the glasses and only when the daily limit has been reached.
-- No financial advice. Reasons are labels for a motive the user chooses or writes. The AI never confirms anything.
-- Keys exist only in the server's environment (`.env`, git-ignored). The glasses app and the MCP process never see them. `env.example` contains names only.
-- Demo data is a fictional sample (`server/fixtures/fills.json`) or a testnet account.
-
 ## What existed before 2026-11-23
 
 Not written for this project:
@@ -144,12 +161,23 @@ Not written for this project:
 
 Written for this project: everything else in this repository.
 
-AI tool disclosure: fill in according to the event rules.
+## How AI tools were used
 
-## Not verified yet
+This project was built with AI coding assistants (Claude Code; ChatGPT for a first draft of the description and the demo script). The idea was picked by the human entrant from options the AI proposed, and the human chose the glasses screen layout from AI-made mockups. The code, tests, documentation drafts and the verification runs listed above were produced by the AI tools.
 
-- Screens in the simulator, and anything on real G2 hardware (text wrapping and widths, list height, glyph rendering).
-- Long-press delivery: which event kind carries it while a list is focused. The handler accepts types 9 and 10 on list, text and system events.
-- The background-state hook names against a real host.
-- Connection to the real Binance testnet and the real Notion API, and the real LLM / STT endpoints (only offline tests with injected `fetch`).
+## Verification status (25 November 2026)
+
+Checked on the developer's machine:
+
+- `npm --prefix server test`: 51 tests pass. Glasses app typecheck, build, `check:pages` and `.ehpk` packing pass.
+- Even Hub simulator: waiting -> fill question -> select -> tap -> `Saved ● breakout` -> waiting, driven through the simulator's automation port.
+- MCP: all four tools called end to end against the replay server (a proposed `AI:` tag chosen by tap is recorded and shows in the weekly pattern).
+- Voice: a Mac-generated English phrase ("took profit at resistance") transcribed correctly by the local small Whisper model in about 3 seconds. This was not the G2 microphone.
+
+Not verified yet:
+
+- The real Binance Spot testnet and the real Notion API (only offline tests with injected `fetch`), and real LLM / STT endpoints.
+- Anything on real G2 hardware: text widths, list height, glyphs, the microphone, long-press delivery while a list is focused (the handler accepts event types 9 and 10 on list, text and system events).
+- The day-limit screen in the simulator.
+- The background-state hook names (`window.__getStateSnapshot` / `__restoreState`) against a real host.
 - Whether `http://` server addresses are accepted by the Even app WebView outside the simulator.
