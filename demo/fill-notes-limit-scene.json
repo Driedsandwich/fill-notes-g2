@@ -1,0 +1,87 @@
+{
+  "_note": "Limit scene. Run with REPLAY_INTERVAL_MS=7000 (fills every 7 s from the 10-fill fixture, no loop). Each prompt is tapped 1.5 s after it appears (first reason). The 9th fill makes the day PnL -216.61 (limit 200). The limit screen appears only after the 10th fill (a BUY) is answered, because pending prompts come first. 76.0 s tap = Yes, cancel open orders (testnet fixture orders in replay mode). No long_press.",
+  "automationPort": 9898,
+  "fps": 6,
+  "scale": 2,
+  "serverLeadSec": 1.5,
+  "steps": [
+    {
+      "at": 0.0,
+      "action": "wait"
+    },
+    {
+      "at": 3.0,
+      "action": "click"
+    },
+    {
+      "at": 10.0,
+      "action": "click"
+    },
+    {
+      "at": 17.0,
+      "action": "click"
+    },
+    {
+      "at": 24.0,
+      "action": "click"
+    },
+    {
+      "at": 31.0,
+      "action": "click"
+    },
+    {
+      "at": 38.0,
+      "action": "click"
+    },
+    {
+      "at": 45.0,
+      "action": "click"
+    },
+    {
+      "at": 52.0,
+      "action": "click"
+    },
+    {
+      "at": 59.0,
+      "action": "click"
+    },
+    {
+      "at": 66.0,
+      "action": "click"
+    },
+    {
+      "at": 76.0,
+      "action": "click"
+    },
+    {
+      "at": 82.0,
+      "action": "end"
+    }
+  ],
+  "marks": [
+    {
+      "at": 0.5,
+      "name": "waiting_before"
+    },
+    {
+      "at": 2.5,
+      "name": "prompt_1"
+    },
+    {
+      "at": 58.5,
+      "name": "prompt_9"
+    },
+    {
+      "at": 61.0,
+      "name": "saved_9_crossing"
+    },
+    {
+      "at": 73.0,
+      "name": "limit"
+    },
+    {
+      "at": 79.0,
+      "name": "after_cancel"
+    }
+  ]
+}

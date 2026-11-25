@@ -1,0 +1,95 @@
+{
+  "_note": "From the ChatGPT first draft of the demo script, shifted by -6.0 s: run-scene.sh starts capture serverLeadSec (1.5 s) before the first fill question, so the first fill is at 1.5 s of capture, not 7.5 s. In the edited video, place this glasses layer at +6.0 s. Default replay interval 60 s (second fill at 61.5 s).",
+  "automationPort": 9898,
+  "fps": 6,
+  "scale": 2,
+  "serverLeadSec": 1.5,
+  "steps": [
+    {
+      "at": 0.0,
+      "action": "wait"
+    },
+    {
+      "at": 1.5,
+      "action": "wait"
+    },
+    {
+      "at": 5.0,
+      "action": "down"
+    },
+    {
+      "at": 8.5,
+      "action": "click"
+    },
+    {
+      "at": 13.5,
+      "action": "wait"
+    },
+    {
+      "at": 61.5,
+      "action": "wait"
+    },
+    {
+      "at": 69.5,
+      "action": "click"
+    },
+    {
+      "at": 74.5,
+      "action": "wait"
+    },
+    {
+      "at": 120.0,
+      "action": "end"
+    }
+  ],
+  "marks": [
+    {
+      "at": 1.5,
+      "name": "02_first_prompt_simulator"
+    },
+    {
+      "at": 8.5,
+      "name": "03_first_saved_simulator"
+    },
+    {
+      "at": 13.5,
+      "name": "04_record_editorial_no_glasses"
+    },
+    {
+      "at": 25.5,
+      "name": "05_architecture_editorial_no_glasses"
+    },
+    {
+      "at": 37.5,
+      "name": "06_safety_editorial_no_glasses"
+    },
+    {
+      "at": 53.5,
+      "name": "07_voice_editorial_no_glasses"
+    },
+    {
+      "at": 61.5,
+      "name": "08_second_prompt_simulator"
+    },
+    {
+      "at": 69.5,
+      "name": "09_second_saved_simulator"
+    },
+    {
+      "at": 74.5,
+      "name": "10_mcp_editorial_no_glasses"
+    },
+    {
+      "at": 89.5,
+      "name": "11_status_editorial_no_glasses"
+    },
+    {
+      "at": 106.5,
+      "name": "12_closing_editorial_no_glasses"
+    },
+    {
+      "at": 120.0,
+      "name": "13_end_before_third_fill"
+    }
+  ]
+}
