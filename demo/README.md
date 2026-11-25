@@ -11,13 +11,13 @@ demo/run-scene.sh demo/fill-notes-scene1.json /path/to/output-dir
 ```
 
 `run-scene.sh` starts the glasses app (vite, port 5173), the simulator (automation port from the script, 9898),
-moves the simulator window to `{3900, 1120}` (the AI virtual display), then starts the Fill Notes server
+optionally moves the simulator window (`SIM_WINDOW_POS=x,y`, e.g. onto a spare display), then starts the Fill Notes server
 (port 8787, replay mode, fictional fills), runs `capture.mjs`, and stops only the processes it started
 (PIDs and process groups are kept in `<out>/pids/`; it never kills by port). It refuses to start when
 8787, 5173 or the automation port is already listening.
 
-Needs: Node 22, ffmpeg/ffprobe, macOS Accessibility permission for `osascript` (window move).
-Set `SIM_JS` to another simulator entry file if needed.
+Needs: Node 22, ffmpeg/ffprobe, macOS Accessibility permission for `osascript` (only with `SIM_WINDOW_POS`).
+The simulator comes from `SIM_JS` (path to `@evenrealities/evenhub-simulator/bin/index.js`) or the `evenhub-simulator` command on PATH (`npm i -g @evenrealities/evenhub-simulator`).
 The server journal and pairing code go to `<out>/data/`, not into the repo.
 
 ## Script format
