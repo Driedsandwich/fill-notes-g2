@@ -170,7 +170,7 @@ This project was built with AI coding assistants (Claude Code; ChatGPT for a fir
 Checked on the developer's machine:
 
 - `npm --prefix server test`: 51 tests pass. Glasses app typecheck, build, `check:pages` and `.ehpk` packing pass.
-- Even Hub simulator: waiting -> fill question -> select -> tap -> `Saved ● breakout` -> waiting, driven through the simulator's automation port.
+- Even Hub simulator, driven through its automation port with synthetic fills: waiting -> fill question -> select -> tap -> `Saved ● breakout` -> waiting; and the day-limit screen after 10 synthetic fills (day PnL -$216.61, limit $200) -> tap -> `Stopped for today (3 orders cancelled)`. The cancelled orders are the replay fixture's fictional open orders, not testnet orders.
 - MCP: all four tools called end to end against the replay server (a proposed `AI:` tag chosen by tap is recorded and shows in the weekly pattern).
 - Voice: a Mac-generated English phrase ("took profit at resistance") transcribed correctly by the local small Whisper model in about 3 seconds. This was not the G2 microphone.
 
@@ -178,6 +178,6 @@ Not verified yet:
 
 - The real Binance Spot testnet and the real Notion API (only offline tests with injected `fetch`), and real LLM / STT endpoints.
 - Anything on real G2 hardware: text widths, list height, glyphs, the microphone, long-press delivery while a list is focused (the handler accepts event types 9 and 10 on list, text and system events).
-- The day-limit screen in the simulator.
+- Cancelling real open orders on the Binance Spot testnet (the only exchange write).
 - The background-state hook names (`window.__getStateSnapshot` / `__restoreState`) against a real host.
 - Whether `http://` server addresses are accepted by the Even app WebView outside the simulator.
