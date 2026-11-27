@@ -60,7 +60,7 @@ Glasses screens (green, text only, no font control):
 - No financial advice. Reason tags describe the motive the user chooses or writes.
 - Keys stay on your own server (`.env`, git-ignored). The glasses app, the LLM and the MCP process never see them. `env.example` has names only. A multi-user version would keep each user's exchange keys on a server that user runs, not on a shared service.
 - Demonstrations use synthetic fills (`server/fixtures/fills.json`) or a testnet account only. Never commit API keys or secrets.
-- The glasses app reaches your server over plain HTTP on your local network, with the 6-digit pair code in a header. Run it on a network you trust (a phone hotspot works at a venue). After 5 different wrong codes from one address, the server refuses that address for 10 minutes. The journal file is readable by your user only.
+- The glasses app reaches your server over plain HTTP on your local network, with the 6-digit pair code in a header. Run it on a network you trust (for example, your own phone hotspot). After 5 different wrong codes from one address, the server refuses that address for 10 minutes. The journal file is readable by your user only.
 
 ## Quick start
 
