@@ -25,6 +25,11 @@ const entry = (over: Partial<JournalEntry> = {}): JournalEntry => ({
 })
 
 describe('JsonlJournal', () => {
+  it('creates the journal with owner-only permissions', async () => {
+    const j = new JsonlJournal(path.join(dir, 'private'))
+    await j.append(entry())
+    expect(fs.statSync(j.file).mode & 0o077).toBe(0)
+  })
   it('appends one JSON line per entry and reads them back', async () => {
     const j = new JsonlJournal(path.join(dir, 'a'))
     await j.append(entry())

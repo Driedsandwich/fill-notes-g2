@@ -10,6 +10,7 @@ import path from 'node:path'
 import zlib from 'node:zlib'
 import crypto from 'node:crypto'
 import { spawnSync } from 'node:child_process'
+import { validateSceneNames } from './scene-names.mjs'
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, Math.max(0, ms)))
 const sha = (buf) => crypto.createHash('sha1').update(buf).digest('hex').slice(0, 10)
@@ -19,8 +20,10 @@ const pct = (arr, p) => (arr.length ? [...arr].sort((a, b) => a - b)[Math.min(ar
 const argv = process.argv.slice(2)
 const pos = []
 const opt = {}
+let validateOnly = false
 for (let i = 0; i < argv.length; i++) {
-  if (argv[i].startsWith('--')) opt[argv[i].slice(2)] = argv[++i]
+  if (argv[i] === '--validate-only') validateOnly = true
+  else if (argv[i].startsWith('--')) opt[argv[i].slice(2)] = argv[++i]
   else pos.push(argv[i])
 }
 if (pos.length < 2) {
@@ -29,20 +32,69 @@ if (pos.length < 2) {
 }
 const scriptPath = path.resolve(pos[0])
 const outDir = path.resolve(pos[1])
-const script = JSON.parse(fs.readFileSync(scriptPath, 'utf8'))
-const port = script.automationPort ?? 9898
-const fps = script.fps ?? 6
-const scale = script.scale ?? 1
-const steps = [...(script.steps ?? [])].sort((a, b) => a.at - b.at)
-const marks = [...(script.marks ?? [])].sort((a, b) => a.at - b.at)
-const readyTimeoutS = script.readyTimeoutSec ?? 40
-const base = `http://127.0.0.1:${port}`
 const ALLOWED = new Set(['wait', 'end', 'up', 'down', 'click', 'double_click', 'long_press', 'long_press_release'])
-for (const s of steps) if (!ALLOWED.has(s.action)) throw new Error(`unknown action: ${s.action}`)
-const endStep = steps.find((s) => s.action === 'end')
-const endAt = endStep ? endStep.at : (steps.at(-1)?.at ?? 0) + 2
-const N = Math.round(endAt * fps) // number of frames
-if (!(N > 0)) throw new Error('scene has no length (add an "end" step)')
+
+function loadScene() {
+  const script = JSON.parse(fs.readFileSync(scriptPath, 'utf8'))
+  validateSceneNames(script)
+  const port = script.automationPort ?? 9898
+  const fps = script.fps ?? 6
+  const scale = script.scale ?? 1
+  const readyTimeoutS = script.readyTimeoutSec ?? 40
+  const steps = script.steps ?? []
+  const marks = script.marks ?? []
+  if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('invalid scene automation port')
+  if (!Number.isFinite(fps) || fps <= 0) throw new Error('invalid scene frame rate')
+  if (!Number.isFinite(scale) || scale <= 0) throw new Error('invalid scene scale')
+  if (!Number.isFinite(readyTimeoutS) || readyTimeoutS < 0) throw new Error('invalid scene ready timeout')
+  if (!Number.isFinite(script.serverLeadSec ?? 1.5)) throw new Error('invalid scene server lead time')
+  if (!Array.isArray(steps) || steps.some((s) => !ALLOWED.has(s?.action) || !Number.isFinite(s.at))) {
+    throw new Error('invalid scene step')
+  }
+  if (marks.some((m) => !Number.isFinite(m.at))) throw new Error('invalid scene mark time')
+  steps.sort((a, b) => a.at - b.at)
+  marks.sort((a, b) => a.at - b.at)
+  const endStep = steps.find((s) => s.action === 'end')
+  const endAt = endStep ? endStep.at : (steps.at(-1)?.at ?? 0) + 2
+  const N = Math.round(endAt * fps)
+  if (!Number.isSafeInteger(N) || N <= 0) throw new Error('invalid scene length')
+  return { port, fps, scale, steps, marks, readyTimeoutS, endAt, N }
+}
+
+function checkOutput(marks) {
+  const directories = ['', 'frames', 'marks']
+  const files = ['scene.mp4', 'report.json', 'console.json', ...marks.map((m) => `marks/${m.name}.png`)]
+  if (validateOnly) {
+    directories.push('pids', 'logs', 'data')
+    files.push('pids/all.txt', 'pids/server.pid', 'pids/vite.pid', 'pids/simulator.pid',
+      'logs/stages.log', 'logs/server.log', 'logs/vite.log', 'logs/simulator.log',
+      'data/pair.json', 'data/journal.jsonl', 'ports_after.json', 'window.json')
+  }
+  for (const dir of directories) {
+    const stat = fs.lstatSync(path.join(outDir, dir), { throwIfNoEntry: false })
+    if (stat && !stat.isDirectory()) throw new Error(`invalid output directory: ${dir || outDir}`)
+  }
+  for (const file of files) {
+    const stat = fs.lstatSync(path.join(outDir, file), { throwIfNoEntry: false })
+    if (stat && (!stat.isFile() || stat.nlink !== 1)) throw new Error(`invalid output file: ${file}`)
+  }
+}
+
+let scene
+try {
+  scene = loadScene()
+  checkOutput(scene.marks)
+} catch (e) {
+  console.error(`capture: ${String(e.message ?? e).replace(/[\r\n]+/g, ' ')}`)
+  process.exit(2)
+}
+if (validateOnly) {
+  // Preserve the resolved path when the runner reads it with command substitution.
+  fs.writeSync(1, `${outDir}/.`)
+  process.exit(0)
+}
+const { port, fps, scale, steps, marks, readyTimeoutS, endAt, N } = scene
+const base = `http://127.0.0.1:${port}`
 
 fs.mkdirSync(path.join(outDir, 'frames'), { recursive: true })
 fs.mkdirSync(path.join(outDir, 'marks'), { recursive: true })
@@ -223,22 +275,22 @@ async function main() {
   // 7. marks and the mp4 (transparent background -> black)
   const vf = (scaleN) =>
     `[1:v][0:v]overlay=format=auto:shortest=1${scaleN > 1 ? `,scale=iw*${scaleN}:ih*${scaleN}:flags=neighbor` : ''},format=yuv420p`
-  const ff = (args) => spawnSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', ...args], { encoding: 'utf8', env: { ...process.env, PATH: `${process.env.PATH}:/opt/homebrew/bin` } })
+  const ff = (args) => spawnSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', ...args], { cwd: outDir, encoding: 'utf8', env: { ...process.env, PATH: `${process.env.PATH}:/opt/homebrew/bin` } })
   const markRecs = []
   for (const m of marks) {
     const idx = Math.min(N - 1, Math.max(0, Math.floor(m.at * fps)))
-    const src = path.join(outDir, 'frames', `frame_${String(idx).padStart(5, '0')}.png`)
-    const dst = path.join(outDir, 'marks', `${m.name}.png`)
+    const src = `frames/frame_${String(idx).padStart(5, '0')}.png`
+    const dst = `marks/${m.name}.png`
     const r = ff(['-i', src, '-f', 'lavfi', '-i', 'color=c=black:s=576x288', '-filter_complex', vf(scale), '-frames:v', '1', dst])
-    markRecs.push({ name: m.name, at: m.at, frame: idx, hash: frames[idx].hash, lit: litPixels(fs.readFileSync(src)), file: `marks/${m.name}.png`, ffmpegOk: r.status === 0, ffmpegErr: r.stderr?.slice(0, 200) || undefined })
+    markRecs.push({ name: m.name, at: m.at, frame: idx, hash: frames[idx].hash, lit: litPixels(fs.readFileSync(path.join(outDir, src))), file: dst, ffmpegOk: r.status === 0, ffmpegErr: r.stderr?.slice(0, 200) || undefined })
   }
   const mp4 = path.join(outDir, 'scene.mp4')
   const r = ff([
-    '-framerate', String(fps), '-i', path.join(outDir, 'frames', 'frame_%05d.png'),
+    '-framerate', String(fps), '-i', 'frames/frame_%05d.png',
     '-f', 'lavfi', '-i', `color=c=black:s=576x288:r=${fps}`,
     '-filter_complex', vf(scale),
     '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '12', '-r', String(fps), '-movflags', '+faststart',
-    mp4,
+    'scene.mp4',
   ])
   let probe = null
   if (r.status === 0) {

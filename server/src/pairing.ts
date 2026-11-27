@@ -21,12 +21,15 @@ export function loadOrCreatePairCode(dir: string): string {
   return code
 }
 
+export function readPairHeader(header: string | undefined): string | undefined {
+  return /^Pair\s+(\d{6})$/.exec(header?.trim() ?? '')?.[1]
+}
+
 /** Accepts `Authorization: Pair 123456`. Constant-time compare. */
 export function checkPairHeader(header: string | undefined, code: string): boolean {
-  if (!header) return false
-  const m = /^Pair\s+(\d{6})$/.exec(header.trim())
-  if (!m) return false
-  const a = Buffer.from(m[1]!)
+  const supplied = readPairHeader(header)
+  if (!supplied) return false
+  const a = Buffer.from(supplied)
   const b = Buffer.from(code)
   return a.length === b.length && crypto.timingSafeEqual(a, b)
 }

@@ -60,6 +60,7 @@ Glasses screens (green, text only, no font control):
 - No financial advice. Reason tags describe the motive the user chooses or writes.
 - Keys stay on your own server (`.env`, git-ignored). The glasses app, the LLM and the MCP process never see them. `env.example` has names only. A multi-user version would keep each user's exchange keys on a server that user runs, not on a shared service.
 - Demonstrations use synthetic fills (`server/fixtures/fills.json`) or a testnet account only. Never commit API keys or secrets.
+- The glasses app reaches your server over plain HTTP on your local network, with the 6-digit pair code in a header. Run it on a network you trust (a phone hotspot works at a venue). After 5 different wrong codes from one address, the server refuses that address for 10 minutes. The journal file is readable by your user only.
 
 ## Quick start
 
@@ -136,7 +137,7 @@ AI assistants did the building: Claude Code wrote the code, tests and documentat
 
 Checked on the developer's machine:
 
-- `npm --prefix server test`: 51 tests pass. Glasses app typecheck, build, `check:pages` and `.ehpk` packing pass.
+- `npm --prefix server test`: 66 tests pass (27 November). Glasses app typecheck, build, `check:pages` and `.ehpk` packing pass.
 - Even Hub simulator, driven through its automation port with synthetic fills: waiting -> fill question -> select -> tap -> `Saved ● breakout` -> waiting; and the day-limit screen after 10 synthetic fills (day PnL -$216.61, limit $200) -> tap -> `Stopped for today (3 orders cancelled)`. The cancelled orders are the replay fixture's fictional open orders, not testnet orders.
 - MCP: all four tools called end to end against the replay server (a proposed `AI:` tag chosen by tap is recorded and shows in the weekly pattern).
 - Voice: a Mac-generated English phrase ("took profit at resistance") transcribed correctly by the local small Whisper model in about 3 seconds. This was not the G2 microphone.

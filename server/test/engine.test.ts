@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { ConflictError, Engine, VoiceUnavailableError } from '../src/engine.ts'
+import { describe, expect, it, vi } from 'vitest'
+import { ConflictError, Engine, NotFoundError, VoiceUnavailableError } from '../src/engine.ts'
 import { rulesReasoner } from '../src/reasoner.ts'
 import { FakeClock, FakeSource, MemJournal, mkFill } from './helpers.ts'
 
@@ -104,6 +104,16 @@ describe('engine: prompt -> note -> undo window', () => {
     const out = await on.engine.voice(new Uint8Array(4000))
     expect(out.text).toBe('took profit early')
     expect(out.state.mode).toBe('saved')
+  })
+
+  it.each([undefined, 'other-fill'])('skips transcription when there is no matching prompt (%s)', async (fillId) => {
+    const transcriber = vi.fn(async () => 'took profit early')
+    const { engine } = make({ transcriber })
+    if (fillId) await engine.ingest(mkFill({ id: 'f1', time: T0 }))
+    const error = await engine.note({ fillId }).catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(NotFoundError)
+    await expect(engine.voice(new Uint8Array(4000), fillId)).rejects.toThrow(error as NotFoundError)
+    expect(transcriber).not.toHaveBeenCalled()
   })
 
   it('AI proposals add one extra choice and never confirm', async () => {

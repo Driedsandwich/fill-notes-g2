@@ -159,10 +159,15 @@ export class Engine {
     }
   }
 
+  private requirePromptIndex(fillId?: string): number {
+    const idx = fillId ? this.prompts.findIndex((p) => p.fill.id === fillId) : this.prompts.length ? 0 : -1
+    if (idx < 0) throw new NotFoundError('no pending prompt for that fill')
+    return idx
+  }
+
   /** Confirm a reason for a pending fill. Written to the journal after the undo window. */
   async note(input: { fillId?: string; reasonIndex?: number; text?: string }): Promise<PublicState> {
-    const idx = input.fillId ? this.prompts.findIndex((p) => p.fill.id === input.fillId) : this.prompts.length ? 0 : -1
-    if (idx < 0) throw new NotFoundError('no pending prompt for that fill')
+    const idx = this.requirePromptIndex(input.fillId)
     const prompt = this.prompts[idx]!
     let reason: string
     let note = ''
@@ -246,10 +251,11 @@ export class Engine {
   }
 
   async voice(pcm: Uint8Array, fillId?: string): Promise<{ text: string; state: PublicState }> {
+    const prompt = this.prompts[this.requirePromptIndex(fillId)]!
     if (!this.deps.transcriber) throw new VoiceUnavailableError()
     const text = await this.deps.transcriber(pcm)
     if (!text) throw new ConflictError('no speech recognized')
-    const state = await this.note({ fillId, text })
+    const state = await this.note({ fillId: prompt.fill.id, text })
     return { text, state }
   }
 

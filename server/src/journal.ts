@@ -10,7 +10,7 @@ export class JsonlJournal implements Journal {
 
   async append(entry: JournalEntry): Promise<void> {
     fs.mkdirSync(path.dirname(this.file), { recursive: true })
-    fs.appendFileSync(this.file, JSON.stringify(entry) + '\n', 'utf8')
+    fs.appendFileSync(this.file, JSON.stringify(entry) + '\n', { encoding: 'utf8', mode: 0o600 })
   }
 
   async readAll(): Promise<JournalEntry[]> {

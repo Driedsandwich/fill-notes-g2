@@ -1,10 +1,14 @@
 import http from 'node:http'
 import type { Engine, PublicState } from './engine.ts'
 import { ConflictError, NotFoundError, VoiceUnavailableError } from './engine.ts'
-import { checkPairHeader } from './pairing.ts'
+import { checkPairHeader, readPairHeader } from './pairing.ts'
+import { systemClock, type Clock } from './types.ts'
 
 const MAX_JSON = 64 * 1024
 const MAX_PCM = 2_000_000 // about 62 s of 16 kHz 16-bit mono
+const PAIR_WINDOW_MS = 10 * 60 * 1000
+const MAX_PAIR_ADDRESSES = 1000
+const MAX_WRONG_CODES = 5
 
 class HttpError extends Error {
   constructor(
@@ -55,23 +59,54 @@ async function readJson(req: http.IncomingMessage): Promise<Record<string, unkno
 export interface AppDeps {
   engine: Engine
   pairCode: string
+  clock?: Clock
 }
 
-export function createApp({ engine, pairCode }: AppDeps): http.Server {
+export function createApp({ engine, pairCode, clock = systemClock }: AppDeps): http.Server {
+  const pairAttempts = new Map<string, { codes: Map<string, number>; lockedUntil: number }>()
   return http.createServer(async (req, res) => {
     cors(res)
-    const url = new URL(req.url ?? '/', 'http://localhost')
-    const route = `${req.method} ${url.pathname}`
+    let route = req.method
     try {
+      let url: URL
+      try {
+        url = new URL(req.url ?? '/', 'http://localhost')
+      } catch {
+        return send(res, 400, { error: 'invalid request target' })
+      }
+      route = `${req.method} ${url.pathname}`
       if (req.method === 'OPTIONS') {
         res.writeHead(204)
         res.end()
         return
       }
       if (route === 'GET /api/health') return send(res, 200, { ok: true, testnet: true })
-      if (!checkPairHeader(req.headers.authorization, pairCode)) {
+      const address = req.socket.remoteAddress
+      const now = clock.now()
+      let attempts = address ? pairAttempts.get(address) : undefined
+      if (address && attempts?.lockedUntil) {
+        if (now < attempts.lockedUntil) return send(res, 429, { error: 'too many wrong pair codes' })
+        pairAttempts.delete(address)
+        attempts = undefined
+      }
+      const header = req.headers.authorization
+      if (!checkPairHeader(header, pairCode)) {
+        const wrongCode = readPairHeader(header)
+        if (address && wrongCode) {
+          if (!attempts) {
+            if (pairAttempts.size === MAX_PAIR_ADDRESSES) pairAttempts.delete(pairAttempts.keys().next().value!)
+            attempts = { codes: new Map(), lockedUntil: 0 }
+            pairAttempts.set(address, attempts)
+          }
+          for (const [code, seen] of attempts.codes) {
+            if (now - seen >= PAIR_WINDOW_MS) attempts.codes.delete(code)
+          }
+          attempts.codes.set(wrongCode, now)
+          if (attempts.codes.size === MAX_WRONG_CODES) attempts.lockedUntil = now + PAIR_WINDOW_MS
+        }
         return send(res, 401, { error: 'pairing required: send "Authorization: Pair <6-digit code>"' })
       }
+      if (address) pairAttempts.delete(address)
       switch (route) {
         case 'GET /api/state':
           return send(res, 200, engine.getState())
